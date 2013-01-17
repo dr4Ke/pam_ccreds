@@ -168,18 +168,22 @@ static int _pam_sm_validate_cached_credentials(pam_handle_t *pamh,
 	}
 
 	if (rc == PAM_SUCCESS) {
-		if (isRoot)
+		if (isRoot) {
 			rc = pam_cc_validate_credentials(pamcch, PAM_CC_TYPE_DEFAULT,
 							 authtok, strlen(authtok));
-		else
+			if (rc == PAM_SUCCESS) syslog(LOG_ERR, "pam_ccreds: success validating credentials");
+		} else {
 			rc = pam_cc_run_helper_binary(pamh, CCREDS_VALIDATE, authtok,
 						      ((sm_flags & SM_FLAGS_SERVICE_SPECIFIC) != 0));
+		}
 	}
 
 	if (rc == PAM_SUCCESS) {
 		_pam_sm_display_message(pamh,
 					"You have been logged on using cached credentials.",
 					PAM_TEXT_INFO, flags);
+	} else {
+		syslog(LOG_ERR, "pam_ccreds: credentials validation error");
 	}
 
 	pam_cc_end(&pamcch);
@@ -215,12 +219,14 @@ static int _pam_sm_store_cached_credentials(pam_handle_t *pamh,
 	if (authtok == NULL)
 		authtok = "";
 
-	if (isRoot) 
+	if (isRoot) {
 		rc = pam_cc_store_credentials(pamcch, PAM_CC_TYPE_DEFAULT,
 					      authtok, strlen(authtok));
-	else
+		if (rc == PAM_SUCCESS) syslog(LOG_ERR, "pam_ccreds: credentials stored");
+	} else {
 		/* Unable to perform when not root; just return success. */
 		rc = PAM_SUCCESS;
+	}
 
 	pam_cc_end(&pamcch);
 
@@ -243,7 +249,7 @@ static int _pam_sm_update_cached_credentials(pam_handle_t *pamh,
 	 * It may be wiser to provide an alternate implementation of the
 	 * pam_cc_db_* interface.
 	 */
-        if (isRoot) {
+	if (isRoot) {
 		rc = pam_cc_start_ext(pamh, ((sm_flags & SM_FLAGS_SERVICE_SPECIFIC) != 0),
 				      ccredsfile, 0, &pamcch);
 		if (rc != PAM_SUCCESS) {
@@ -259,6 +265,7 @@ static int _pam_sm_update_cached_credentials(pam_handle_t *pamh,
 		if (isRoot)
 			rc = pam_cc_delete_credentials(pamcch, PAM_CC_TYPE_DEFAULT,
 						       authtok, strlen(authtok));
+			if (rc == PAM_SUCCESS) syslog(LOG_ERR, "pam_ccreds: credentials removed");
 		else
 			/* Unable to perform when not root; just return success. */
 			rc = PAM_SUCCESS;
