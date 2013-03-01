@@ -11,6 +11,7 @@ EXPORTED {
 		# Published PAM service module interfaces
 		pam_sm_authenticate;
 		pam_sm_setcred;
+		pam_sm_chauthtok;
 #		pam_sm_acct_mgmt;
 	local:
 		*;

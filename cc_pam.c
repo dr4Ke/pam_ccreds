@@ -40,6 +40,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh,
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh,
 			      int flags, int argc, const char **argv);
 
+PAM_EXTERN int pam_sm_chauthtok(pam_handle_t *pamh,
+			      int flags, int argc, const char **argv);
+
 #if 0
 PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh,
 				int flags, int argc, const char **argv);
@@ -358,6 +361,49 @@ PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh,
 			      int flags, int argc, const char **argv)
 {
 	return PAM_SUCCESS;
+}
+
+/*
+ * Store new password when it is changed
+ */
+PAM_EXTERN int pam_sm_chauthtok(pam_handle_t *pamh,
+			      int flags, int argc, const char **argv)
+{
+	int i;
+	int rc;
+	unsigned int sm_flags = 0, sm_action = 0;
+	const char *ccredsfile = NULL;
+	const char *action = NULL;
+	int (*selector)(pam_handle_t *, int, unsigned int, const char *);
+
+	for (i = 0; i < argc; i++) {
+		if (strncmp(argv[i], "ccredsfile=", sizeof("ccredsfile=") - 1) == 0)
+			ccredsfile = argv[i] + sizeof("ccredsfile=") - 1;
+		else if (strncmp(argv[i], "action=", sizeof("action=") - 1) == 0)
+			action = argv[i] + sizeof("action=") - 1;
+		else
+			pam_syslog(pamh, LOG_ERR, "pam_ccreds: illegal option %s", argv[i]);
+	}
+
+	if (action == NULL) {
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: configuration file did not "
+		       "specify any action");
+	} else if (_pam_sm_parse_action(action, &sm_action) != 0) {
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: invalid action \"%s\"", action);
+	}
+
+	switch (sm_action) {
+	case SM_ACTION_STORE_CCREDS:
+		selector = _pam_sm_store_cached_credentials;
+		break;
+	default:
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: invalid action %d in the password context", sm_action);
+		return PAM_SERVICE_ERR;
+	}
+
+	rc = (*selector)(pamh, flags, sm_flags, ccredsfile);
+
+	return rc;
 }
 
 #if 0

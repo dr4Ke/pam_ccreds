@@ -32,6 +32,8 @@
 #include <pam/pam_modules.h>
 #endif
 
+#include <security/pam_ext.h>
+
 struct pam_cc_handle;
 
 typedef struct pam_cc_handle pam_cc_handle_t;
