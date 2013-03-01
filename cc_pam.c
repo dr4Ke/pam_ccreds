@@ -166,7 +166,7 @@ static int _pam_sm_validate_cached_credentials(pam_handle_t *pamh,
 
 		break;
 	default:
-		syslog(LOG_ERR, "pam_ccreds: internal error.");
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: internal error.");
 		rc = PAM_SERVICE_ERR;
 	}
 
@@ -174,7 +174,7 @@ static int _pam_sm_validate_cached_credentials(pam_handle_t *pamh,
 		if (isRoot) {
 			rc = pam_cc_validate_credentials(pamcch, PAM_CC_TYPE_DEFAULT,
 							 authtok, strlen(authtok));
-			if (rc == PAM_SUCCESS) syslog(LOG_ERR, "pam_ccreds: success validating credentials");
+			if (rc == PAM_SUCCESS) pam_syslog(pamh, LOG_ERR, "pam_ccreds: success validating credentials");
 		} else {
 			rc = pam_cc_run_helper_binary(pamh, CCREDS_VALIDATE, authtok,
 						      ((sm_flags & SM_FLAGS_SERVICE_SPECIFIC) != 0));
@@ -186,7 +186,7 @@ static int _pam_sm_validate_cached_credentials(pam_handle_t *pamh,
 					"You have been logged on using cached credentials.",
 					PAM_TEXT_INFO, flags);
 	} else {
-		syslog(LOG_ERR, "pam_ccreds: credentials validation error");
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: credentials validation error");
 	}
 
 	pam_cc_end(&pamcch);
@@ -202,6 +202,8 @@ static int _pam_sm_store_cached_credentials(pam_handle_t *pamh,
 	const char *authtok;
 	pam_cc_handle_t *pamcch = NULL;
 	int isRoot = (geteuid() == 0);
+
+	pam_syslog(pamh, LOG_INFO, "pam_ccreds: storing credentials");
 
 	if (isRoot) {
 		rc = pam_cc_start_ext(pamh, ((sm_flags & SM_FLAGS_SERVICE_SPECIFIC) != 0),
@@ -225,9 +227,10 @@ static int _pam_sm_store_cached_credentials(pam_handle_t *pamh,
 	if (isRoot) {
 		rc = pam_cc_store_credentials(pamcch, PAM_CC_TYPE_DEFAULT,
 					      authtok, strlen(authtok));
-		if (rc == PAM_SUCCESS) syslog(LOG_ERR, "pam_ccreds: credentials stored");
+		if (rc == PAM_SUCCESS) pam_syslog(pamh, LOG_ERR, "pam_ccreds: credentials stored");
 	} else {
 		/* Unable to perform when not root; just return success. */
+                pam_syslog(pamh, LOG_WARNING, "pam_ccreds: can't store credentials when not running as root");
 		rc = PAM_SUCCESS;
 	}
 
@@ -268,7 +271,7 @@ static int _pam_sm_update_cached_credentials(pam_handle_t *pamh,
 		if (isRoot)
 			rc = pam_cc_delete_credentials(pamcch, PAM_CC_TYPE_DEFAULT,
 						       authtok, strlen(authtok));
-			if (rc == PAM_SUCCESS) syslog(LOG_ERR, "pam_ccreds: credentials removed");
+			if (rc == PAM_SUCCESS) pam_syslog(pamh, LOG_ERR, "pam_ccreds: credentials removed");
 		else
 			/* Unable to perform when not root; just return success. */
 			rc = PAM_SUCCESS;
@@ -315,20 +318,20 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh,
 		else if (strncmp(argv[i], "action=", sizeof("action=") - 1) == 0)
 			action = argv[i] + sizeof("action=") - 1;
 		else
-			syslog(LOG_ERR, "pam_ccreds: illegal option %s", argv[i]);
+			pam_syslog(pamh, LOG_ERR, "pam_ccreds: illegal option %s", argv[i]);
 	}
 
 	if ((sm_flags & (SM_FLAGS_USE_FIRST_PASS | SM_FLAGS_TRY_FIRST_PASS))
 	    == (SM_FLAGS_USE_FIRST_PASS | SM_FLAGS_TRY_FIRST_PASS)) {
-		syslog(LOG_ERR, "pam_ccreds: both use_first_pass and try_first_pass given");
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: both use_first_pass and try_first_pass given");
 		return PAM_SERVICE_ERR;
 	}
 
 	if (action == NULL) {
-		syslog(LOG_ERR, "pam_ccreds: configuration file did not "
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: configuration file did not "
 		       "specify any action");
 	} else if (_pam_sm_parse_action(action, &sm_action) != 0) {
-		syslog(LOG_ERR, "pam_ccreds: invalid action \"%s\"", action);
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: invalid action \"%s\"", action);
 	}
 
 	switch (sm_action) {
@@ -342,7 +345,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh,
 		selector = _pam_sm_update_cached_credentials;
 		break;
 	default:
-		syslog(LOG_ERR, "pam_ccreds: invalid action %d", sm_action);
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds: invalid action %d", sm_action);
 		return PAM_SERVICE_ERR;
 	}
 
