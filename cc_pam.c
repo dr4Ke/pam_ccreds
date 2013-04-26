@@ -230,7 +230,7 @@ static int _pam_sm_store_cached_credentials(pam_handle_t *pamh,
 		if (rc == PAM_SUCCESS) pam_syslog(pamh, LOG_ERR, "pam_ccreds: credentials stored");
 	} else {
 		/* Unable to perform when not root; just return success. */
-                pam_syslog(pamh, LOG_WARNING, "pam_ccreds: can't store credentials when not running as root");
+		pam_syslog(pamh, LOG_WARNING, "pam_ccreds: can't store credentials when not running as root");
 		rc = PAM_SUCCESS;
 	}
 
