@@ -377,6 +377,7 @@ PAM_EXTERN int pam_sm_chauthtok(pam_handle_t *pamh,
 	unsigned int sm_flags = 0, sm_action = 0;
 	const char *ccredsfile = NULL;
 	const char *action = NULL;
+	const char *authtok;
 	int (*selector)(pam_handle_t *, int, unsigned int, const char *);
 
 	for (i = 0; i < argc; i++) {
@@ -395,12 +396,18 @@ PAM_EXTERN int pam_sm_chauthtok(pam_handle_t *pamh,
 		pam_syslog(pamh, LOG_ERR, "pam_ccreds: invalid action \"%s\"", action);
 	}
 
+	rc = pam_get_item(pamh, PAM_AUTHTOK, (const void **)&authtok);
+	if ((authtok == NULL) || (authtok == "")) {
+		/* empty password, we're not at the last pass of passwd */
+		return PAM_SUCCESS;
+	}
+
 	switch (sm_action) {
 	case SM_ACTION_STORE_CCREDS:
 		selector = _pam_sm_store_cached_credentials;
 		break;
 	default:
-		pam_syslog(pamh, LOG_ERR, "pam_ccreds: invalid action %d in the password context", sm_action);
+		pam_syslog(pamh, LOG_ERR, "pam_ccreds (chauthtok): invalid action %d in the password context", sm_action);
 		return PAM_SERVICE_ERR;
 	}
 
